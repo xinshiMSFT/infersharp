@@ -237,6 +237,16 @@ namespace Examples
         }
 
         /// <summary>
+        /// Resources usage example with multi-variable using, no leaks expected.
+        /// </summary>
+        public void ResourceLeakMutiVarUsingOK() {
+            using(var sr = new StreamReader("everwhat.txt"))
+            using(var sw = new StreamWriter("whatever.txt")){
+                sw.WriteLine(sr.ReadToEnd());
+            }
+        }
+
+        /// <summary>
         /// Resource usage example with exception filter handling, leaks expected.
         /// </summary>
         public void ResourceLeakFilterBad() {
