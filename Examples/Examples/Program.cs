@@ -239,10 +239,21 @@ namespace Examples
         /// <summary>
         /// Resources usage example with multi-variable using, no leaks expected.
         /// </summary>
-        public void ResourceLeakMutiVarUsingOK() {
+        public void ResourceLeakMutiVarUsingOK1() {
             using(var sr = new StreamReader("everwhat.txt"))
             using(var sw = new StreamWriter("whatever.txt")){
                 sw.WriteLine(sr.ReadToEnd());
+                return;
+            }
+        }
+
+        /// <summary>
+        /// Another resources usage example with multi-variable using, no leaks expected.
+        /// </summary>
+        public Task ResourceLeakMutiVarUsingOK2() {
+            using(var sr = new StreamReader("everwhat.txt"))
+            using(var sw = new StreamWriter("everwhat.txt")){
+                return sw.WriteLineAsync(sr.ReadToEnd());
             }
         }
 
