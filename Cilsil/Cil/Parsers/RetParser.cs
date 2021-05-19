@@ -25,7 +25,10 @@ namespace Cilsil.Cil.Parsers
                     
                     if (retType == state.Method.Module.TypeSystem.Void)
                     {
-                        state.PreviousNode.Successors.Add(state.ProcDesc.ExitNode);
+                        if (!state.IgnoreNodes)
+                        {
+                            state.PreviousNode.Successors.Add(state.ProcDesc.ExitNode);
+                        }
                         var returnVariable = new LvarExpression(
                                     new LocalVariable(Identifier.ReturnIdentifier,
                                                     state.Method));
