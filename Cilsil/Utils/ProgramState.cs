@@ -57,6 +57,11 @@ namespace Cilsil.Utils
         public bool AppendToPreviousNode { get; set; }
 
         /// <summary>
+        /// If this is true, then we ignore registering new nodes to CFG.
+        /// </summary>
+        public bool IgnoreNodes { get; set; }
+
+        /// <summary>
         /// Source code location of the instruction currently being parsed.
         /// </summary>
         public Location CurrentLocation { get; private set; }
@@ -168,6 +173,7 @@ namespace Cilsil.Utils
             OffsetToExceptionType = new Dictionary<int, TypeReference>();
             PreviousReturnedExpression = null;
             PreviousReturnedType = null;
+            IgnoreNodes = false;
         }
 
         /// <summary>

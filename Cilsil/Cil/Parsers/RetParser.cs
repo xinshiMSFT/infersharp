@@ -97,6 +97,7 @@ namespace Cilsil.Cil.Parsers
                         (var nextInstruction, var previousNode) = state.PopInstruction(false);
                         state.PushInstruction(nextInstruction, previousNode);
                     }
+                    state.IgnoreNodes = false;
                     return true;
                 default:
                     return false;
