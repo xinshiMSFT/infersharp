@@ -57,11 +57,6 @@ namespace Cilsil.Utils
         public bool AppendToPreviousNode { get; set; }
 
         /// <summary>
-        /// If this is true, then we ignore registering new nodes to CFG.
-        /// </summary>
-        public bool IgnoreNodes { get; set; }
-
-        /// <summary>
         /// Source code location of the instruction currently being parsed.
         /// </summary>
         public Location CurrentLocation { get; private set; }
@@ -171,9 +166,10 @@ namespace Cilsil.Utils
 
             ExceptionBlockStartToEndOffsets = new Dictionary<int, int>();
             OffsetToExceptionType = new Dictionary<int, TypeReference>();
-            PreviousReturnedExpression = null;
-            PreviousReturnedType = null;
-            IgnoreNodes = false;
+            PreviousReturnedExpression = new LvarExpression(
+                                         new LocalVariable(Identifier.ReturnIdentifier,
+                                                           Method));
+            PreviousReturnedType = new Tstruct("System.Object");
         }
 
         /// <summary>
@@ -271,15 +267,9 @@ namespace Cilsil.Utils
         /// </summary>
         /// <param name="exp">The expression to push.</param>
         /// <param name="type">The type of the expression being pushed.</param>
-        /// <param name="setRetExpr">True if set the PreviousReturnedExpression and 
         /// PreviousReturnedType, false otherwise.</param>
-        public void PushExpr(Expression exp, Typ type, bool setRetExpr = false)
+        public void PushExpr(Expression exp, Typ type)
         {
-            if (setRetExpr)
-            {
-                PreviousReturnedExpression = exp;
-                PreviousReturnedType = type;
-            }
             ProgramStack.Push((exp, type));
         } 
 
@@ -298,13 +288,6 @@ namespace Cilsil.Utils
         /// </summary>
         public void PushRetExpr()
         {
-            if (PreviousReturnedExpression == null || PreviousReturnedType == null)
-            {
-                throw new ServiceExecutionException(
-                    $@"Pushing returned expression == null into stack at method: {
-                        Method.GetCompatibleFullName()} instruction: {
-                        CurrentInstruction} location: {CurrentLocation}", this);
-            }
             ProgramStack.Push((PreviousReturnedExpression, PreviousReturnedType));
         }
 
@@ -398,7 +381,6 @@ namespace Cilsil.Utils
                     PreviousNode = node ?? PreviousNode,
                     PreviousStack = ProgramStack.Clone(),
                     NextAvailableTemporaryVariableId = NextAvailableTemporaryVariableId,
-                    PreviousReturnedExpression = PreviousReturnedExpression,
                     PreviousReturnedType = PreviousReturnedType,
                 });
 
@@ -477,11 +459,6 @@ namespace Cilsil.Utils
             /// The next available integer identifier for temporary variables at this state.
             /// </summary>
             public int NextAvailableTemporaryVariableId;
-
-            /// <summary>
-            /// The expression registered by return node at this state.
-            /// </summary>
-            public Expression PreviousReturnedExpression;
 
             /// <summary>
             /// The expression type registered by return node at this state.

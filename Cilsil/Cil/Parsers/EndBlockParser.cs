@@ -17,10 +17,6 @@ namespace Cilsil.Cil.Parsers
                     state.PushInstruction(instruction.Next); 
                     return true;
                 case Code.Endfinally:  
-                    if (state.ExceptionBlockStartToEndOffsets.ContainsKey(instruction.Next.Offset))
-                    {
-                        state.PushRetExpr();
-                    }
                     state.PushInstruction(instruction.Next);
                     return true;
                 default:

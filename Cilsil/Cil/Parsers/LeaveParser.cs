@@ -19,18 +19,17 @@ namespace Cilsil.Cil.Parsers
 
                     state.AppendToPreviousNode = false;
 
-                    if (nextInstruction != null &&
-                        targetTrue.Offset != nextInstruction.Offset &&
+                    if (targetTrue.Offset != nextInstruction.Offset &&
                         !state.ParsedInstructions.Contains(nextInstruction))
                     {
                         state.PushInstruction(nextInstruction);
                     }
-
                     // When jumping to the target true instruction is for loading the returned variables for 
                     // exception handling, we ignore registering these nodes.
-                    if (state.ExceptionBlockStartToEndOffsets.ContainsKey(nextInstruction.Offset))
+                    if (state.ExceptionBlockStartToEndOffsets.ContainsKey(nextInstruction.Offset) &&
+                        !state.OffsetToExceptionType.ContainsKey(nextInstruction.Offset))
                     {
-                        state.IgnoreNodes = true;
+                        return true;
                     }
                     state.PushInstruction(targetTrue);
                     return true;

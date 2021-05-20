@@ -137,18 +137,15 @@ namespace Cilsil.Cil.Parsers
         /// otherwise <c>false</c> and adds to sucessors of previsou node.</param>
         protected void RegisterNode(ProgramState state, CfgNode node, Boolean inExceptionNodes = false)
         {
-            if (!state.IgnoreNodes)
+            state.Cfg.RegisterNode(node);
+            if (inExceptionNodes)
+                state.PreviousNode.ExceptionNodes.Add(node);
+            else
+                state.PreviousNode.Successors.Add(node);
+            if (RememberNodeOffset)
             {
-                state.Cfg.RegisterNode(node);
-                if (inExceptionNodes)
-                    state.PreviousNode.ExceptionNodes.Add(node);
-                else
-                    state.PreviousNode.Successors.Add(node);
-                if (RememberNodeOffset)
-                {
-                    state.SaveNodeOffset(node, PreviousProgramStack);
-                    RememberNodeOffset = false;
-                }
+                state.SaveNodeOffset(node, PreviousProgramStack);
+                RememberNodeOffset = false;
             }
         }
 
