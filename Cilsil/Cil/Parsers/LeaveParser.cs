@@ -21,6 +21,7 @@ namespace Cilsil.Cil.Parsers
 
                     if (targetTrue.Offset != nextInstruction.Offset)
                     {
+                        state.PushRetExpr();
                         state.PushInstruction(nextInstruction);
                     }
                     // When the next instruction is in finally block, we ignore jumping to the 

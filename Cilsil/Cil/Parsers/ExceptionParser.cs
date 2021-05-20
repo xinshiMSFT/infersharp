@@ -16,8 +16,7 @@ namespace Cilsil.Cil.Parsers
         protected override bool ParseCilInstructionInternal(Instruction instruction,
                                                             ProgramState state)
         {
-
-            state.PushRetExpr();
+            
             var endBlockOffset = state.ExceptionBlockStartToEndOffsets[state.CurrentInstruction.Offset];
             while (state.ExceptionBlockStartToEndOffsets.ContainsKey(endBlockOffset))
             {
@@ -150,6 +149,7 @@ namespace Cilsil.Cil.Parsers
             // Construct a finally block when unwrapped exception type is "System.Object".
             else
             {
+                state.PushRetExpr();
                 ParseCilInstruction(instruction, state);
                 state.PopInstruction();
                 state.PushInstruction(instruction.Next);

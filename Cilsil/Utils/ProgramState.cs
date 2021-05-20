@@ -388,13 +388,12 @@ namespace Cilsil.Utils
         /// Pops an instruction to be parsed.
         /// </summary>
         /// <returns>The instruction to be parsed and its previous node.</returns>
-        public (Instruction, CfgNode) PopInstruction(bool popProgramStack = true)
+        public (Instruction, CfgNode) PopInstruction()
         {
             var snapshot = InstructionsStack.Pop();
             PreviousNode = snapshot.PreviousNode;
             CurrentInstruction = snapshot.Instruction;
-            if (popProgramStack)
-                ProgramStack = snapshot.PreviousStack;
+            ProgramStack = snapshot.PreviousStack;
             NextAvailableTemporaryVariableId = snapshot.NextAvailableTemporaryVariableId;
 
             var currentSequencePoint =
