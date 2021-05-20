@@ -14,8 +14,6 @@ namespace Cilsil.Cil.Parsers
             switch (instruction.OpCode.Code)
             {
                 case Code.Endfilter:
-                    state.PushInstruction(instruction.Next); 
-                    return true;
                 case Code.Endfinally:  
                     state.PushInstruction(instruction.Next);
                     return true;

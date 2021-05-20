@@ -243,7 +243,6 @@ namespace Examples
             using(var sr = new StreamReader("everwhat.txt"))
             using(var sw = new StreamWriter("whatever.txt")){
                 sw.WriteLine(sr.ReadToEnd());
-                return;
             }
         }
 
