@@ -25,6 +25,12 @@ namespace Cilsil
         /// </summary>
         public static Dictionary<string, int> UnknownInstructions { get; } =
             new Dictionary<string, int>();
+        
+        /// <summary>
+        /// TODO: use https://nlog-project.org or log4net instead of this class.
+        /// </summary>
+        public static Dictionary<string, long> ElapseTimePerMethod { get; } =
+            new Dictionary<string, long>();
 
         /// <summary>
         /// TODO: use https://nlog-project.org or log4net instead of this class.
@@ -45,6 +51,14 @@ namespace Cilsil
             {
                 UnknownInstructions.Add(instruction, 1);
             }
+        }
+
+        /// <summary>
+        /// TODO: use https://nlog-project.org or log4net instead of this class.
+        /// </summary>
+        public static void RecordMethodElapseTime(MethodDefinition method, long elapseTime)
+        {
+            ElapseTimePerMethod.Add(method.FullName, elapseTime);
         }
 
         /// <summary>

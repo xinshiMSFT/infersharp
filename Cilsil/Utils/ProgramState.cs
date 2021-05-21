@@ -288,7 +288,12 @@ namespace Cilsil.Utils
         /// </summary>
         public void PushRetExpr()
         {
-            ProgramStack.Push((PreviousReturnedExpression, PreviousReturnedType));
+            if (ProgramStack.Count == 0 ||
+                (ProgramStack.Count > 0 && 
+                !ProgramStack.Peek().Item1.Equals(PreviousReturnedExpression)))
+            {
+                ProgramStack.Push((PreviousReturnedExpression, PreviousReturnedType));
+            }
         }
 
         /// <summary>

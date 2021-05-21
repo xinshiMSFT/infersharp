@@ -16,7 +16,6 @@ namespace Cilsil.Cil.Parsers
         protected override bool ParseCilInstructionInternal(Instruction instruction,
                                                             ProgramState state)
         {
-            
             var endBlockOffset = state.ExceptionBlockStartToEndOffsets[state.CurrentInstruction.Offset];
             while (state.ExceptionBlockStartToEndOffsets.ContainsKey(endBlockOffset))
             {

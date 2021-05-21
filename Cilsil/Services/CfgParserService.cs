@@ -52,7 +52,12 @@ namespace Cilsil.Services
             Cfg = new Cfg();
             foreach (var method in Methods)
             {
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+                
                 ComputeMethodCfg(method);
+                
+                watch.Stop();
+                Log.RecordMethodElapseTime(method, watch.ElapsedMilliseconds);
             }
             Log.WriteError("Timed out methods: " + TimeoutMethodCount);
             return new CfgParserResult(Cfg, Methods);
