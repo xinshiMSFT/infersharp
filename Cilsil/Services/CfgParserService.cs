@@ -54,10 +54,13 @@ namespace Cilsil.Services
             {
                 var watch = System.Diagnostics.Stopwatch.StartNew();
                 
-                ComputeMethodCfg(method);
+                bool success = ComputeMethodCfg(method);
                 
                 watch.Stop();
-                Log.RecordMethodElapseTime(method, watch.ElapsedMilliseconds);
+                if (success)
+                {
+                    Log.RecordMethodElapseTime(method, watch.ElapsedMilliseconds); 
+                }           
             }
             Log.WriteError("Timed out methods: " + TimeoutMethodCount);
             return new CfgParserResult(Cfg, Methods);
@@ -82,13 +85,13 @@ namespace Cilsil.Services
             return Execute();
         }
 
-        private void ComputeMethodCfg(MethodDefinition method)
+        private bool ComputeMethodCfg(MethodDefinition method)
         {
             var methodName = method.GetCompatibleFullName();
             if (Cfg.Procs.ContainsKey(methodName))
             {
                 Log.WriteWarning($"Method with duplicate full name found: {methodName }");
-                return;
+                return false;
             }
 
             var programState = new ProgramState(method, Cfg);
@@ -152,6 +155,7 @@ namespace Cilsil.Services
             {
                 // Deregisters resources of skipped method.
                 programState.ProcDesc.DeregisterResources(Cfg);
+                return false;
             }
             else
             {
@@ -186,6 +190,7 @@ namespace Cilsil.Services
 
                 Cfg.Procs.Add(methodName, programState.ProcDesc);
             }
+            return true;
         }
 
         private (ProgramState, bool) ParseInstructions(Instruction instruction,
