@@ -58,7 +58,14 @@ namespace Cilsil
         /// </summary>
         public static void RecordMethodElapseTime(MethodDefinition method, long elapseTime)
         {
-            ElapseTimePerMethod.Add(method.FullName, elapseTime);
+            if (ElapseTimePerMethod.ContainsKey(method.FullName))
+            {
+                ElapseTimePerMethod[method.FullName] += elapseTime;
+            }
+            else
+            {
+                ElapseTimePerMethod.Add(method.FullName, elapseTime);
+            }
         }
 
         /// <summary>
