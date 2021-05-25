@@ -200,6 +200,8 @@ namespace Cilsil.Services
             state.PushInstruction(instruction);
             do
             {
+                var watch = System.Diagnostics.Stopwatch.StartNew();
+
                 (var nextInstruction, _) = state.PopInstruction();
 
                 var inExceptionHandler = state.ExceptionBlockStartToEndOffsets.ContainsKey(nextInstruction.Offset);
@@ -237,7 +239,10 @@ namespace Cilsil.Services
                     translationUnfinished = true;
                     break;
                 }
+                
+                watch.Stop();
 
+                Log.RecordInstructionCountAndElapseTime(state.Method, nextInstruction, watch.Elapsed.TotalMilliseconds * 1000000);    
             } while (state.HasInstruction);
 
             return (state, translationUnfinished);
