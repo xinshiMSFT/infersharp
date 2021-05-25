@@ -155,12 +155,6 @@ namespace Cilsil.Cil.Parsers
 
                 state.PushInstruction(instruction, exceptionHandlerNode);
                 (instruction, _) = state.PopInstruction();
-                
-                var catchVarIdentifier = state.GetIdentifier(Identifier.IdentKind.Normal);
-                var catchVarStore = new Store(catchVariable,
-                                              new VarExpression(returnVariable),
-                                              expressionType,
-                                              state.CurrentLocation);
             }
 
             /* Load caught exception variable. For example:
