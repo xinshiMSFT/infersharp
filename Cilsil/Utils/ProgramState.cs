@@ -266,7 +266,6 @@ namespace Cilsil.Utils
         /// </summary>
         /// <param name="exp">The expression to push.</param>
         /// <param name="type">The type of the expression being pushed.</param>
-        /// PreviousReturnedType, false otherwise.</param>
         public void PushExpr(Expression exp, Typ type)
         {
             ProgramStack.Push((exp, type));

@@ -90,7 +90,7 @@ namespace Cilsil
         /// <param name="outcfg">The CFG output path.</param>
         /// <param name="cfgtxt">The CFG text representation output path.</param>
         /// <param name="outtenv">The type environment output path.</param>
-        /// <param name="dot">The dot file (used for visualizing the computed CFG) output
+        /// <param name="dot">The dot file (used for visualizing the computed CFG) output.</param>
         /// <param name="outelapsetime">The elapse time output path (used for visualizing the elapse time per method).
         /// path.</param>
         public static void Translate(string[] paths = null,
