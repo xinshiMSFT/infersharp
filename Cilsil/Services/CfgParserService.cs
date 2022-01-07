@@ -21,17 +21,22 @@ namespace Cilsil.Services
 
         public IEnumerable<TypeDefinition> Types { get; private set; }
 
+        public bool WriteConsoleProgress { get; private set; }
+
         private Cfg Cfg;
 
-        public CfgParserService(IEnumerable<MethodDefinition> methods = null,
+        public CfgParserService(bool writeConsoleProgress,
+                                IEnumerable<MethodDefinition> methods = null,
                                 IEnumerable<TypeDefinition> types = null)
         {
+            WriteConsoleProgress = writeConsoleProgress;
             Methods = methods;
             Types = types;
         }
 
         public ServiceExecutionResult Execute()
         {
+            Log.WriteLine("Translation stage 3/3: Computing control-flow graph.");
             if (Methods == null)
             {
                 if (Types == null)
@@ -47,25 +52,23 @@ namespace Cilsil.Services
                 }
             }
 
+            var i = 0;
+            var total = Methods.Count();
             Cfg = new Cfg();
-            foreach (var method in Methods)
+            using (var bar = new ProgressBar())
             {
-                System.Diagnostics.Stopwatch watch = null;
-                if (Log.Debug)
+                foreach (var method in Methods)
                 {
-                    watch = System.Diagnostics.Stopwatch.StartNew();
-                }
-
-                bool success = ComputeMethodCfg(method);
-
-                if (success && Log.Debug)
-                {
-                    watch.Stop();
-
-                    Log.RecordMethodElapseTime(method, watch.ElapsedMilliseconds);
+                    ComputeMethodCfg(method);
+                    i++;
+                    bar.Report((double)i / total);
+                    if (WriteConsoleProgress)
+                    {
+                        Log.WriteProgressLine(i, total);
+                    }
                 }
             }
-            Log.WriteError("Timed out methods: " + TimeoutMethodCount);
+            Log.WriteWarning("Timed out methods: " + TimeoutMethodCount);
             return new CfgParserResult(Cfg, Methods);
         }
 
@@ -100,10 +103,15 @@ namespace Cilsil.Services
             var programState = new ProgramState(method, Cfg);
 
             var methodBody = method.Body;
+            var unhandledExceptionCase =
+                programState.MethodExceptionHandlers.UnhandledExceptionBlock ||
+                !programState.MethodExceptionHandlers.NoNestedTryCatchFinally() ||
+                !programState.MethodExceptionHandlers.NoFinallyEndWithThrow();
 
             // True if the translation terminates early, false otherwise.
             var translationUnfinished = false;
-            foreach (var exceptionHandler in methodBody.ExceptionHandlers)
+
+            if (!method.IsAbstract && methodBody.Instructions.Count > 0)
             {
                 var exceptionHandlingBlock = exceptionHandler;
                 var exceptionHandlingBlockStartOffset = -1;
@@ -111,32 +119,41 @@ namespace Cilsil.Services
                 TypeReference catchType = null;
                 try
                 {
-                    switch (exceptionHandlingBlock.HandlerType)
+                    var nextInstruction = programState.PopInstruction();
+                    // Checks if there is a node for the offset that we can reuse.
+                    (var nodeAtOffset, var excessiveVisits) =
+                        programState.GetOffsetNode(
+                            nextInstruction.Offset,
+                            programState.PreviousNode?.BlockEndOffset ??
+                            MethodExceptionHandlers.DefaultHandlerEndOffset);
+                    // We don't reuse nodes of finally handlers.
+                    if (nodeAtOffset != null &&
+                        !programState.MethodExceptionHandlers
+                                     .FinallyOffsetToFinallyHandler
+                                     .ContainsKey(nextInstruction.Offset) &&
+                        !programState.MethodExceptionHandlers
+                                     .CatchOffsetToCatchHandler
+                                     .ContainsKey(nextInstruction.Offset))
                     {
-                        case ExceptionHandlerType.Catch:
-                            catchType = exceptionHandlingBlock.CatchType;
-                            exceptionHandlingBlockStartOffset = exceptionHandlingBlock.HandlerStart.Offset;
-                            exceptionHandlingBlockEndOffset = exceptionHandlingBlock.HandlerEnd.Offset;
-                            break;
-
-                        case ExceptionHandlerType.Finally:
-                            exceptionHandlingBlockStartOffset = exceptionHandlingBlock.HandlerStart.Offset;
-                            exceptionHandlingBlockEndOffset = exceptionHandlingBlock.HandlerEnd.Offset;
-                            break;
-
-                        case ExceptionHandlerType.Filter:
-                            // Example: catch (ArgumentException e) when (e.ParamName == "…")   
-                            // Adds associated try block node offsets to a hashset.
-                            catchType = programState.Method.Module.Import(typeof(System.Exception));
-                            exceptionHandlingBlockStartOffset = exceptionHandlingBlock.FilterStart.Offset;
-                            exceptionHandlingBlockEndOffset = exceptionHandlingBlock.HandlerEnd.Offset;
-                            break;
-
-                        case ExceptionHandlerType.Fault:
-                        // uncommon case: fault block
-                        // Example: fault {}
-                        default:
-                            break;
+                        programState.PreviousNode.Successors.Add(nodeAtOffset);
+                    }
+                    else if (unhandledExceptionCase)
+                    {
+                        Log.WriteWarning($"Unhandled exception-handling.");
+                        Log.RecordUnknownInstruction("unhandled-exception");
+                        Log.RecordUnfinishedMethod(programState.Method.GetCompatibleFullName(),
+                                                   nextInstruction.RemainingInstructionCount());
+                        translationUnfinished = true;
+                        break;
+                    }
+                    else if (excessiveVisits)
+                    {
+                        TimeoutMethodCount++;
+                        Log.WriteWarning("Translation timeout.");
+                        Log.RecordUnfinishedMethod(programState.Method.GetCompatibleFullName(),
+                                                   nextInstruction.RemainingInstructionCount());
+                        translationUnfinished = true;
+                        break;
                     }
                 }
                 catch (Exception e)
@@ -154,14 +171,8 @@ namespace Cilsil.Services
                 }
             }
 
-            if (!method.IsAbstract && methodBody.Instructions.Count > 0)
-            {
-                (programState, translationUnfinished) =
-                    ParseInstructions(methodBody.Instructions.FirstOrDefault(),
-                                      programState,
-                                      translationUnfinished);
-            }
-            // We add method to cfg only if its translation is finished. Otherwise, we skip that method.
+            // We add method to cfg only if its translation is finished. Otherwise, we skip that
+            // method.
             if (translationUnfinished && !IsDisposeFunction(method))
             {
                 // Deregisters resources of skipped method.
@@ -173,18 +184,11 @@ namespace Cilsil.Services
                 // Sets exception sink node as default exception node for all nodes in the graph.
                 foreach (var node in programState.ProcDesc.Nodes)
                 {
-
+                    // Nodes linked with exception handlers should not be linked with the sink, and
+                    // will already have the corresponding nodes linked.
                     if (node.ExceptionNodes.Count == 0)
                     {
                         node.ExceptionNodes.Add(programState.ProcDesc.ExceptionSinkNode);
-                    }
-                    if (node.Successors.Count == 0 && node != programState.ProcDesc.ExitNode)
-                    {
-                        node.Successors.Add(programState.ProcDesc.ExitNode);
-                    }
-                    else if (node.Successors.Count > 1 && node.Successors.Contains(programState.ProcDesc.ExitNode))
-                    {
-                        node.Successors.Remove(programState.ProcDesc.ExitNode);
                     }
                 }
 
@@ -203,69 +207,7 @@ namespace Cilsil.Services
             }
         }
 
-        private (ProgramState, bool) ParseInstructions(Instruction instruction,
-                                                       ProgramState state,
-                                                       bool translationUnfinished)
-        {
-            state.PushInstruction(instruction);
-            do
-            {
-                System.Diagnostics.Stopwatch watch = null;
-                if (Log.Debug)
-                {
-                    watch = System.Diagnostics.Stopwatch.StartNew();
-                }
-
-                (var nextInstruction, _) = state.PopInstruction();
-
-                var inExceptionHandler = state.ExceptionBlockStartToEndOffsets.ContainsKey(nextInstruction.Offset);
-
-                (var nodeAtOffset, var excessiveVisits) =
-                    state.GetOffsetNode(nextInstruction.Offset);
-
-                if (nodeAtOffset != null)
-                {
-                    state.PreviousNode.Successors.Add(nodeAtOffset);
-                }
-                else if (excessiveVisits)
-                {
-                    TimeoutMethodCount++;
-                    Log.WriteError("Translation timeout.");
-                    Log.RecordUnfinishedMethod(state.Method.GetCompatibleFullName(),
-                                               nextInstruction.RemainingInstructionCount());
-                    translationUnfinished = true;
-                    break;
-                }
-                else if (inExceptionHandler &&
-                         !InstructionParser.ParseExceptionCilInstruction(nextInstruction, state) &&
-                         !InstructionParser.ParseCilInstruction(nextInstruction, state))
-                {
-                    Log.RecordUnfinishedMethod(state.Method.GetCompatibleFullName(),
-                                               nextInstruction.RemainingInstructionCount());
-                    translationUnfinished = true;
-                    break;
-                }
-                else if (!inExceptionHandler &&
-                         !InstructionParser.ParseCilInstruction(nextInstruction, state))
-                {
-                    Log.RecordUnfinishedMethod(state.Method.GetCompatibleFullName(),
-                                               nextInstruction.RemainingInstructionCount());
-                    translationUnfinished = true;
-                    break;
-                }
-
-                if (Log.Debug)
-                {
-                    watch.Stop();
-
-                    Log.RecordInstructionCountAndElapseTime(state.Method, nextInstruction, watch.Elapsed.TotalMilliseconds * 1000000);
-                }
-            } while (state.HasInstruction);
-
-            return (state, translationUnfinished);
-        }
-
-        private void SetNodePredecessors(ProgramState programState)
+        private static void SetNodePredecessors(ProgramState programState)
         {
             var done = new HashSet<CfgNode>();
             var todo = new Queue<CfgNode>();
@@ -280,13 +222,10 @@ namespace Cilsil.Services
                         s.Predecessors.Add(n);
                         todo.Enqueue(s);
                     }
-                    foreach (var s in n.ExceptionNodes)
+                    if (n.ExceptionNodes.Count > 0 &&
+                        n.ExceptionNodes[0] != programState.ProcDesc.ExceptionSinkNode)
                     {
-                        if (s != programState.ProcDesc.ExceptionSinkNode)
-                        {
-                            todo.Enqueue(s);
-                        }
-
+                        todo.Enqueue(n.ExceptionNodes[0]);
                     }
                 }
             }
@@ -302,10 +241,11 @@ namespace Cilsil.Services
         /// Checks if the target method is a Dispose function.
         /// </summary>
         /// <param name="method">Target method to be checked.</param>
-        private bool IsDisposeFunction(MethodDefinition method)
+        private static bool IsDisposeFunction(MethodDefinition method)
         {
-            return (method.Name.Equals("Dispose") || method.Name.Equals("System.IDisposable.Dispose"))
-                && method.ReturnType.FullName.Equals("System.Void");
+            return (method.Name.Equals("Dispose") ||
+                    method.Name.Equals("System.IDisposable.Dispose")) &&
+                        method.ReturnType.FullName.Equals("System.Void");
         }
     }
 }

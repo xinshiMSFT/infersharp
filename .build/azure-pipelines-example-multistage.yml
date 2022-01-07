@@ -26,7 +26,7 @@ jobs:
     displayName: 'Publish binaries'
     inputs:
       PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-      ArtifactName: 'inferinput'
+      ArtifactName: 'infersharp-input'
       publishLocation: 'Container'
 
 # Run Infer#
@@ -35,7 +35,7 @@ jobs:
   pool:
     vmImage: 'ubuntu-20.04'
   container:
-    image: mcr.microsoft.com/infersharp:v1.0
+    image: mcr.microsoft.com/infersharp:v1.2
 
   steps:
   # Download binaries
@@ -44,14 +44,23 @@ jobs:
     inputs:
       buildType: 'current'
       downloadType: 'single'
-      artifactName: 'inferinput'
+      artifactName: 'infersharp-input'
       downloadPath: '$(System.ArtifactsDirectory)'
 
   - script: |
-      curl -o run_infersharp.sh https://raw.githubusercontent.com/microsoft/infersharp/v1.0/run_infersharp.sh
+      curl -o run_infersharp.sh https://raw.githubusercontent.com/microsoft/infersharpaction/v1.2.1/run_infersharp_ci.sh
       chmod +x run_infersharp.sh
       ./run_infersharp.sh $(System.ArtifactsDirectory)
     displayName: 'Run Infer# analysis'
 
+  # Display as build console logs
   - script: cat $(Build.SourcesDirectory)/infer-out/report.txt
     displayName: 'Infer# analysis result'
+  
+  # Publish SARIF
+  - task: PublishBuildArtifacts@1
+    displayName: "Publish Infer# SARIF"
+    inputs:
+      PathtoPublish: "$(Build.SourcesDirectory)/infer-out/report.sarif"
+      ArtifactName: "infersharp-output"
+      publishLocation: "Container"

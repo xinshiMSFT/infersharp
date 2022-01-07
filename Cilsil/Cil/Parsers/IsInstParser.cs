@@ -19,42 +19,30 @@ namespace Cilsil.Cil.Parsers
             switch (instruction.OpCode.Code)
             {
                 case Code.Isinst:
-                    // Create and store exception expression of filter block.
-                    if (state.ExceptionBlockStartToEndOffsets.ContainsKey(instruction.Offset))
+                    (var objectExpression, var objectType) = state.Pop();
+                    var typeToCheck = instruction.Operand as TypeReference;
+                    var returnIdentifier = state.GetIdentifier(Identifier.IdentKind.Normal);
+                    var returnType = new Tint(Tint.IntKind.IBool, true);
+                    var builtinFunctionExpression = new ConstExpression(
+                        ProcedureName.BuiltIn__instanceof);
+                    var sizeofExpression = new SizeofExpression(
+                        Typ.FromTypeReferenceNoPointer(typeToCheck),
+                        SizeofExpression.SizeofExpressionKind.instof);
+                    var args = new List<Call.CallArg>
                     {
-                        var newObjectIdentifier = state.GetIdentifier(Identifier.IdentKind.Normal);
-                        var catchExceptionType = instruction.Operand as TypeReference;
-                        state.PushExpr(new VarExpression(newObjectIdentifier),
-                                       Typ.FromTypeReference(catchExceptionType));
-                        state.PushInstruction(instruction.Next);
-                    }
-                    else
-                    {
-                         (var objectExpression, var objectType) = state.Pop();
-                        var typeToCheck = instruction.Operand as TypeReference;
-                        var returnIdentifier = state.GetIdentifier(Identifier.IdentKind.Normal);
-                        var returnType = new Tint(Tint.IntKind.IBool, true);
-                        var builtinFunctionExpression = new ConstExpression(
-                            ProcedureName.BuiltIn__instanceof);
-                        var sizeofExpression = new SizeofExpression(
-                            Typ.FromTypeReferenceNoPointer(typeToCheck), 
-                            SizeofExpression.SizeofExpressionKind.instof);
-                        var args = new List<Call.CallArg> 
-                        { 
-                            new Call.CallArg(objectExpression, objectType), 
-                            new Call.CallArg(sizeofExpression, new Tvoid())
-                        };
-                        var callInstruction = new Call(
-                            returnIdentifier, 
-                            returnType, 
-                            builtinFunctionExpression, 
-                            args, 
-                            new Call.CallFlags(), 
-                            state.CurrentLocation);
-                        var newNode = AddMethodBodyInstructionsToCfg(state, callInstruction);
-                        state.PushExpr(new VarExpression(returnIdentifier), returnType);
-                        state.PushInstruction(instruction.Next, newNode);
-                    }
+                        new Call.CallArg(objectExpression, objectType),
+                        new Call.CallArg(sizeofExpression, new Tvoid())
+                    };
+                    var callInstruction = new Call(
+                        returnIdentifier,
+                        returnType,
+                        builtinFunctionExpression,
+                        args,
+                        new Call.CallFlags(),
+                        state.CurrentLocation);
+                    var newNode = AddMethodBodyInstructionsToCfg(state, callInstruction);
+                    state.PushExpr(new VarExpression(returnIdentifier), returnType);
+                    state.PushInstruction(instruction.Next, newNode);
                     return true;
                 default:
                     return false;

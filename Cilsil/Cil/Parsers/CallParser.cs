@@ -48,12 +48,12 @@ namespace Cilsil.Cil.Parsers
             else
             {
                 CreateMethodCall(state,
-                                isVirtual,
-                                calledMethod,
-                                out var retTypeRef,
-                                out var retId,
-                                out var callArgs,
-                                out var callInstr);
+                                 isVirtual,
+                                 calledMethod,
+                                 out var retTypeRef,
+                                 out var retId,
+                                 out var callArgs,
+                                 out var callInstr);
 
                 instrs.Add(callInstr);
 
@@ -63,7 +63,8 @@ namespace Cilsil.Cil.Parsers
                 if (calledMethod.HasThis && calledMethod.Name != Identifier.ConstructorIdentifier)
                 {
                     var thisArg = callArgs.First();
-                    if (thisArg.Expression is VarExpression varExpression)
+                    if (thisArg.Expression is VarExpression varExpression &&
+                        !varExpression.FromThis)
                     {
                         instrs.Insert(0, CreateDereference(varExpression, thisArg.Type, state));
                     }
@@ -97,7 +98,7 @@ namespace Cilsil.Cil.Parsers
         /// <param name="paramCount"></param>
         /// <param name="state"></param>
         /// <returns></returns>
-        private Call CreateLockedAttributeCall(
+        private static Call CreateLockedAttributeCall(
             bool setLockedAttribute, int paramCount, ProgramState state)
         {
             var returnIdentifier = state.GetIdentifier(Identifier.IdentKind.Normal);
@@ -121,7 +122,8 @@ namespace Cilsil.Cil.Parsers
                                      : new Call(returnIdentifier,
                                                 new Tvoid(),
                                                 new ConstExpression(
-                                                    ProcedureName.BuiltIn__delete_locked_attribute),
+                                                    ProcedureName.
+                                                        BuiltIn__delete_locked_attribute),
                                                 callArgs,
                                                 callFlags,
                                                 state.CurrentLocation);

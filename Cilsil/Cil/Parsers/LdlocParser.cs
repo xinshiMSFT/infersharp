@@ -84,14 +84,10 @@ namespace Cilsil.Cil.Parsers
                                                                variableType,
                                                                variableExpression));
             }
-            else if (value != null && value is BinopExpression && type is Tptr)
+            else if (state.VariableIndexToNullCheck.ContainsKey(index))
             {
-                // For if/else/loop branching, we add the binop expression in condition.
-                state.Pop();
-                state.PushAndLoad(variableExpression, variableType);
-                state.PushExpr(value, new Tint(Tint.IntKind.IBool));
-                state.PushInstruction(instruction.Next);
-                return true;
+                state.PushExpr(state.VariableIndexToNullCheck[index].expr,
+                               state.VariableIndexToNullCheck[index].type);
             }
             else
             {

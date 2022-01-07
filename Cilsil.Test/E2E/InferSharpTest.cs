@@ -771,6 +771,55 @@ namespace Cilsil.Test.E2E
         }
 
         /// <summary>
+        /// Validates that caught exceptions and their types are interpreted correctly.
+        /// </summary>
+        /// <param name="returnsNull">if <c>true</c>, a null dereference should occur; if
+        /// <c>false</c>, no warning should occur.</param>
+        /// <param name="expectedError">The expected error.</param>
+        [DataRow(false, InferError.None)]
+        [DataRow(true, InferError.NULL_DEREFERENCE)]
+        [DataTestMethod]
+        public void NullExceptionTestCatchException(bool returnsNull, InferError expectedError)
+        {
+            TestRunManager.Run(
+                InitVars(firstLocalVarType: VarType.TestClass,
+                         firstLocalVarValue: CallTestClassMethod(
+                             TestClassMethod.CatchReturnsNullIfTrue,
+                             false,
+                             args: new string[]
+                             {
+                                 returnsNull.ToString()
+                                             .ToLower()
+                             })) +
+                    DerefObject(VarName.FirstLocal), GetString(expectedError));
+        }
+
+        /// <summary>
+        /// Validates that caught exceptions and their types are interpreted correctly, and that 
+        /// control flow through finally is correctly handled.
+        /// </summary>
+        /// <param name="returnsNull">if <c>true</c>, a null dereference should occur; if
+        /// <c>false</c>, no warning should occur.</param>
+        /// <param name="expectedError">The expected error.</param>
+        [DataRow(false, InferError.None)]
+        [DataRow(true, InferError.NULL_DEREFERENCE)]
+        [DataTestMethod]
+        public void NullExceptionTestFinallyException(bool returnsNull, InferError expectedError)
+        {
+            TestRunManager.Run(
+                InitVars(firstLocalVarType: VarType.TestClass,
+                         firstLocalVarValue: CallTestClassMethod(
+                             TestClassMethod.FinallyReturnsNullIfTrue,
+                             false,
+                             args: new string[]
+                             {
+                                 returnsNull.ToString()
+                                             .ToLower()
+                             })) +
+                    DerefObject(VarName.FirstLocal), GetString(expectedError));
+        }
+
+        /// <summary>
         /// Validates thread safety violation detection of a public method's read without
         /// synchronization on an integer field which may race with a write on that integer field.
         /// </summary>
@@ -790,7 +839,7 @@ namespace Cilsil.Test.E2E
                                   :
                     InitVars(firstLocalVarType: VarType.Integer,
                                  firstLocalVarValue: GetString(VarName.StaticIntegerField)),
-                GetString(expectedError));
+                GetString(expectedError), true);
         }
 
         /// <summary>
