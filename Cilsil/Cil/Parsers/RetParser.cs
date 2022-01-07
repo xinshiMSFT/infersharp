@@ -68,18 +68,8 @@ namespace Cilsil.Cil.Parsers
                                                  Typ.FromTypeReference(retType),
                                                  state.CurrentLocation);
                         }
-                        var retNode = new StatementNode(state.CurrentLocation,
-                                                        StatementNode.StatementNodeKind.ReturnStmt,
-                                                        state.ProcDesc);
                         retNode.Instructions.Add(retInstr);
-                        if (returnValue is ExnExpression)
-                        {
-                            retNode.Successors = new List<CfgNode> { state.ProcDesc.ExceptionSinkNode };
-                        }
-                        else
-                        {
-                            retNode.Successors = new List<CfgNode> { state.ProcDesc.ExitNode };
-                        }
+                        retNode.Successors = new List<CfgNode> { state.ProcDesc.ExitNode };
                         RegisterNode(state, retNode);
                     }
                     return true;

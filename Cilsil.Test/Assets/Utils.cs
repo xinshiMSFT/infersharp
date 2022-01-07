@@ -66,7 +66,6 @@ namespace Cilsil.Test.Assets
         public enum TestClassMethod
         {
             None,
-            CloseStream,
             ExpectNonNullParam,
             ReturnNullOnFalse,
             IncrementRefParameter,
@@ -77,8 +76,6 @@ namespace Cilsil.Test.Assets
             InitializeStreamReaderObjectField,
             InitializeInstanceObjectFieldViaReference,
             ReturnElementFromInstanceArrayField,
-            ReturnInitializedStreamReader,
-            ReturnInitializedMemoryStream,
             ReturnOneDimArray,
             ReturnTwoDimArray,
             TestBox,
@@ -228,21 +225,6 @@ namespace Cilsil.Test.Assets
             $"{GetString(name)} = {value};\n";
 
         /// <summary>
-        /// Generates a string representation of instantiating a new variable.
-        /// </summary>
-        /// <param name="type">The type of the variable being instantiated.</param>
-        /// <param name="name">The name of the variable being instantiated.</param>
-        /// <param name="value">The string representation of the value to be assigned.</param>
-        /// <param name="withLineEnding">True if that call should have a semicolon ending.</param>
-        /// <returns>String representation of the variable instantiation statement.</returns>
-        private static string Instantiate(VarType type,
-                                          VarName name,
-                                          string value,
-                                          bool withLineEnding) =>
-            $"{GetString(type)} {GetString(name)} = {value}" + (withLineEnding ? ";\n"
-                                                                               : string.Empty);
-
-        /// <summary>
         /// Generates a string representation of variable initialization code.
         /// </summary>
         /// <param name="state">The  state of the TestClass used in the test case; for example,
@@ -334,8 +316,7 @@ namespace Cilsil.Test.Assets
         /// Method for generating a string representation of a call to a method of TestClass.
         /// </summary>
         /// <param name="method">The method to be called.</param>
-        /// <param name="withLineEnding"><c>true</c> if that call should have a semicolon ending,
-        /// <c>false</c> otherwise.</param>
+        /// <param name="withLineEnding">True if that call should have a semicolon ending.</param>
         /// <param name="args">The list of arguments of the method.</param>
         /// <returns>A string representation of the method call.</returns>
         public static string CallTestClassMethod(TestClassMethod method,

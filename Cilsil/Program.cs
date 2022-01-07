@@ -8,7 +8,6 @@ using System.Collections.Generic;
 using System.CommandLine;
 using System.CommandLine.Invocation;
 using System.IO;
-using System.Text.Json;
 
 namespace Cilsil
 {
@@ -104,14 +103,6 @@ namespace Cilsil
             cfg.WriteToFile(outcfg);
             tenv.WriteToFile(outtenv);
 
-            if (Log.Debug)
-            {
-                var fullElapseTimePath = Path.GetFullPath(Directory.GetParent(outcfg) + "/elapse_per_mtd.json");
-                File.WriteAllText(fullElapseTimePath, JsonSerializer.Serialize(Log.ElapseTimePerMethod));
-                var fullInstrElapseTimePath = Path.GetFullPath(fullElapseTimePath.Replace(".json", "_offset.json"));
-                File.WriteAllText(fullInstrElapseTimePath, JsonSerializer.Serialize(Log.ElapseTimeAndCountPerOffset));
-            }
-
             if (!string.IsNullOrWhiteSpace(dot))
             {
                 var fullDotPath = Path.GetFullPath(dot);
@@ -151,14 +142,6 @@ namespace Cilsil
             Log.PrintAllUnknownInstruction();
             Log.WriteLine();
             Log.PrintCoverageStats(result.GetResult<CfgParserResult>().Methods);
-
-            if (Log.Debug)
-            {
-                watch.Stop();
-
-                Log.WriteLine();
-                Log.PrintProcessTime(watch.ElapsedMilliseconds);
-            }
 
             return (cfg, tenv);
         }

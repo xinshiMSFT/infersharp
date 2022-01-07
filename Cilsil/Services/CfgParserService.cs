@@ -6,8 +6,6 @@ using Cilsil.Services.Results;
 using Cilsil.Sil;
 using Cilsil.Utils;
 using Mono.Cecil;
-using Mono.Cecil.Cil;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -91,13 +89,13 @@ namespace Cilsil.Services
             return Execute();
         }
 
-        private bool ComputeMethodCfg(MethodDefinition method)
+        private void ComputeMethodCfg(MethodDefinition method)
         {
             var methodName = method.GetCompatibleFullName();
             if (Cfg.Procs.ContainsKey(methodName))
             {
                 Log.WriteWarning($"Method with duplicate full name found: {methodName }");
-                return false;
+                return;
             }
 
             var programState = new ProgramState(method, Cfg);
@@ -113,11 +111,8 @@ namespace Cilsil.Services
 
             if (!method.IsAbstract && methodBody.Instructions.Count > 0)
             {
-                var exceptionHandlingBlock = exceptionHandler;
-                var exceptionHandlingBlockStartOffset = -1;
-                var exceptionHandlingBlockEndOffset = -1;
-                TypeReference catchType = null;
-                try
+                programState.PushInstruction(methodBody.Instructions.First());
+                do
                 {
                     var nextInstruction = programState.PopInstruction();
                     // Checks if there is a node for the offset that we can reuse.
@@ -155,20 +150,14 @@ namespace Cilsil.Services
                         translationUnfinished = true;
                         break;
                     }
-                }
-                catch (Exception e)
-                {
-                    Log.WriteWarning($"Exception on processing exception handling blocks: {e.Message}.");
-                    continue;
-                }
-                if (exceptionHandlingBlockStartOffset != -1)
-                {
-                    programState.ExceptionBlockStartToEndOffsets.Add(exceptionHandlingBlockStartOffset, exceptionHandlingBlockEndOffset);
-                    if (catchType != null)
+                    else if (!InstructionParser.ParseCilInstruction(nextInstruction, programState))
                     {
-                        programState.OffsetToExceptionType.Add(exceptionHandlingBlockStartOffset, catchType);
+                        Log.RecordUnfinishedMethod(programState.Method.GetCompatibleFullName(),
+                                                   nextInstruction.RemainingInstructionCount());
+                        translationUnfinished = true;
+                        break;
                     }
-                }
+                } while (programState.HasInstruction);
             }
 
             // We add method to cfg only if its translation is finished. Otherwise, we skip that
@@ -177,7 +166,6 @@ namespace Cilsil.Services
             {
                 // Deregisters resources of skipped method.
                 programState.ProcDesc.DeregisterResources(Cfg);
-                return false;
             }
             else
             {
@@ -198,12 +186,12 @@ namespace Cilsil.Services
                 programState.ProcDesc.ExitNode.ExceptionNodes.Clear();
                 programState.ProcDesc.ExceptionSinkNode.ExceptionNodes.Clear();
                 programState.ProcDesc.StartNode.ExceptionNodes.Add(programState.ProcDesc.ExitNode);
-                programState.ProcDesc.ExceptionSinkNode.ExceptionNodes.Add(programState.ProcDesc.ExitNode);
+                programState.ProcDesc.ExceptionSinkNode.ExceptionNodes.Add(
+                    programState.ProcDesc.ExitNode);
 
                 SetNodePredecessors(programState);
 
                 Cfg.Procs.Add(methodName, programState.ProcDesc);
-                return true;
             }
         }
 
@@ -229,12 +217,9 @@ namespace Cilsil.Services
                     }
                 }
             }
-            if (!programState.ProcDesc.ExceptionSinkNode.Successors.Contains(
-                 programState.ProcDesc.ExitNode))
-            {
-                programState.ProcDesc.ExceptionSinkNode.Successors.Add(programState.ProcDesc.ExitNode);
-            }
-            programState.ProcDesc.ExitNode.Predecessors.Add(programState.ProcDesc.ExceptionSinkNode);
+            programState.ProcDesc.ExceptionSinkNode.Successors.Add(programState.ProcDesc.ExitNode);
+            programState.ProcDesc.ExitNode.Predecessors.Add(
+                programState.ProcDesc.ExceptionSinkNode);
         }
 
         /// <summary>
