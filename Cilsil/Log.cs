@@ -1,6 +1,5 @@
 ﻿// Copyright (c) Microsoft Corporation.
 // Licensed under the MIT License.
-using Cilsil.Extensions;
 using Cilsil.Utils;
 using Mono.Cecil;
 using Mono.Cecil.Cil;
@@ -25,11 +24,6 @@ namespace Cilsil
         /// <summary>
         /// TODO: use https://nlog-project.org or log4net instead of this class.
         /// </summary>
-        public static bool Debug { get; set; } = false;
-
-        /// <summary>
-        /// TODO: use https://nlog-project.org or log4net instead of this class.
-        /// </summary>
         public static Dictionary<string, int> UnfinishedMethods { get; } =
             new Dictionary<string, int>();
 
@@ -38,18 +32,6 @@ namespace Cilsil
         /// </summary>
         public static Dictionary<string, int> UnknownInstructions { get; } =
             new Dictionary<string, int>();
-
-        /// <summary>
-        /// TODO: use https://nlog-project.org or log4net instead of this class.
-        /// </summary>
-        public static Dictionary<string, long> ElapseTimePerMethod { get; } =
-            new Dictionary<string, long>();
-
-        /// <summary>
-        /// TODO: use https://nlog-project.org or log4net instead of this class.
-        /// </summary>
-        public static Dictionary<string, Dictionary<string, List<double>>> ElapseTimeAndCountPerOffset { get; } =
-            new Dictionary<string, Dictionary<string, List<double>>>();
 
         /// <summary>
         /// TODO: use https://nlog-project.org or log4net instead of this class.
@@ -70,43 +52,6 @@ namespace Cilsil
             {
                 UnknownInstructions.Add(instruction, 1);
             }
-        }
-
-        /// <summary>
-        /// TODO: use https://nlog-project.org or log4net instead of this class.
-        /// </summary>
-        public static void RecordMethodElapseTime(MethodDefinition method, long elapseTime)
-        {
-            if (ElapseTimePerMethod.ContainsKey(method.FullName))
-            {
-                ElapseTimePerMethod[method.FullName] += elapseTime;
-            }
-            else
-            {
-                ElapseTimePerMethod.Add(method.FullName, elapseTime);
-            }
-        }
-
-        /// <summary>
-        /// TODO: use https://nlog-project.org or log4net instead of this class.
-        /// </summary>
-        public static void RecordInstructionCountAndElapseTime(MethodDefinition method, Instruction instruction, double elapseTime)
-        {
-            if (!ElapseTimeAndCountPerOffset.ContainsKey(method.FullName))
-            {
-                ElapseTimeAndCountPerOffset.Add(method.FullName, new Dictionary<string, List<double>>());
-            }
-            ElapseTimeAndCountPerOffset[method.FullName]
-                .GetOrCreateValue(instruction.ToString() + ":" + instruction.Offset.ToString(), new List<double>())
-                .Add(elapseTime);
-        }
-
-        /// <summary>
-        /// TODO: use https://nlog-project.org or log4net instead of this class.
-        /// </summary>
-        public static void PrintProcessTime(long elapseTime)
-        {
-            WriteLine($"E2E Elapse Time: {elapseTime} ms");
         }
 
         /// <summary>
