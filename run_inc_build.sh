@@ -4,16 +4,16 @@
 # Licensed under the MIT License.
 
 # Check if we have enough arguments.
-if [ "$#" -ne 4 ] ; then
-    echo "run_inc_build.sh <repo_url> <new_commit> <old_commit> <output_path> - requires 4 arguments"
+if [ "$#" -ne 3 ] ; then
+    echo "run_inc_build.sh <repo_url> <new_commit> <old_commit> - requires 3 arguments"
     exit
 fi
 
 # -------------------------------------------------------
-# Example:
-# repo_url: https://github.com/xi-liu-ds/githubactions-1.git
-# new commit with bug fix: ffe3e3c2ca2dfc9c17b980631d05129eac554f05
-# old commit with bug: 862057c6c7fd10e07db6033731cec5239c13faba
+# Example: We should find a resource leak is fixed
+# repo_url: https://github.com/microsoft/infersharp.git
+# new commit with bug fix: 11c8a34076e64f92bc7e1493be1febc0996d02d7
+# old commit with bug: 534ea12f36e3aff5a043971791399da0a4e6a940 
 # -------------------------------------------------------
 
 infer_args_list=("--enable-issue-type NULL_DEREFERENCE" "--enable-issue-type DOTNET_RESOURCE_LEAK" "--enable-issue-type THREAD_SAFETY_VIOLATION")
@@ -51,11 +51,6 @@ do
     infer_args="$infer_args $infer_arg"
 done
 
-# Prepare incremental build result folder
-rm -r results
-mkdir -p results
-
-
 # Getting changed file list
 rm -r new_commit
 mkdir -p new_commit
@@ -65,11 +60,9 @@ echo "Processing {$1}"
 echo "Getting changed file list between branch {$2} and {$3}..."
 git diff --name-only $2..$3 > index.txt
 
-## first run: new commit
-git checkout $2
-cd ConsoleApp1
+## first run: old commit
+git checkout $3
 dotnet build
-cd ..
 
 # Preparation
 parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
@@ -77,56 +70,34 @@ cd "$parent_path"
 if [ -d infer-out ]; then rm -Rf infer-out; fi
 if [ -d infer-staging ]; then rm -Rf infer-staging; fi
 coreLibraryPath=../Cilsil/bin/System.Private.CoreLib.dll
+processLibraryPath=../Cilsil/bin/Debug/net5.0/ubuntu.16.10-x64/System.Diagnostics.Process.dll
 echo -e "Copying binaries to a staging folder...\n"
 mkdir infer-staging
-cp -r $coreLibraryPath ConsoleApp1/ConsoleApp1/bin infer-staging
+cp -r $coreLibraryPath $processLibraryPath Cilsil.Test/bin infer-staging
+
+# run capture in reactive mode so that previously-captured source files are kept if they are up-to-date
+echo -e "Code translation started..."
+dotnet ../Cilsil/bin/Debug/net5.0/Cilsil.dll translate infer-staging --outcfg infer-staging/cfg.json --outtenv infer-staging/tenv.json --cfgtxt infer-staging/cfg.txt
+echo -e "Code translation completed. Analyzing...\n"
+infer capture
+time infer $(infer help --list-issue-types 2> /dev/null | grep ':true:' | cut -d ':' -f 1 | sed -e 's/^/--disable-issue-type /') $infer_args analyzejson --cfg-json infer-staging/cfg.json --tenv-json infer-staging/tenv.json
+
+
+## second run: new commit
+git checkout $2
+dotnet build
+
+# Preparation
+parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
+cd "$parent_path"
+if [ -d infer-staging ]; then rm -Rf infer-staging; fi
+echo -e "Copying binaries to a staging folder...\n"
+mkdir infer-staging
+cp -r $coreLibraryPath $processLibraryPath Cilsil.Test/bin infer-staging
 
 # Run InferSharp analysis.
 echo -e "Code translation started..."
 dotnet ../Cilsil/bin/Debug/net5.0/Cilsil.dll translate infer-staging --outcfg infer-staging/cfg.json --outtenv infer-staging/tenv.json --cfgtxt infer-staging/cfg.txt
 echo -e "Code translation completed. Analyzing...\n"
 infer capture
-mkdir infer-out/captured 
-infer $(infer help --list-issue-types 2> /dev/null | grep ':true:' | cut -d ':' -f 1 | sed -e 's/^/--disable-issue-type /') $infer_args analyzejson --cfg-json infer-staging/cfg.json --tenv-json infer-staging/tenv.json
-# store the infer report
-cp infer-out/report.json ../results/report-current.json
-
-
-## second run: old commit
-cd ..
-rm -r old_commit
-mkdir -p old_commit
-git clone $1 old_commit
-cd old_commit
-git checkout $3
-cd ConsoleApp1
-dotnet build
-cd ..
-
-# Preparation
-parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
-cd "$parent_path"
-if [ -d infer-out ]; then rm -Rf infer-out; fi
-if [ -d infer-staging ]; then rm -Rf infer-staging; fi
-echo -e "Copying binaries to a staging folder...\n"
-mkdir infer-staging
-cp -r $coreLibraryPath ConsoleApp1/ConsoleApp1/bin infer-staging
-
-# run capture in reactive mode so that previously-captured source files are kept if they are up-to-date
-echo -e "Code translation started..."
-dotnet ../Cilsil/bin/Debug/net5.0/Cilsil.dll translate infer-staging --outcfg infer-staging/cfg.json --outtenv infer-staging/tenv.json --cfgtxt infer-staging/cfg.txt
-echo -e "Code translation completed. Analyzing...\n"
-infer capture --reactive
-mkdir infer-out/captured 
-infer $(infer help --list-issue-types 2> /dev/null | grep ':true:' | cut -d ':' -f 1 | sed -e 's/^/--disable-issue-type /') $infer_args analyzejson --cfg-json infer-staging/cfg.json --tenv-json infer-staging/tenv.json --changed-files-index ../new_commit/index.txt
-# store the infer report
-cp infer-out/report.json ../results/report-previous.json
-
-# compare reports
-cd ../results/
-infer reportdiff --debug --report-current report-current.json --report-previous report-previous.json
-# move report to save to output_path
-echo "Outputting diffs to {$4}..."
-rm -r $4
-mkdir -p $4
-cp -r infer-out/differential/ $4
+time infer $(infer help --list-issue-types 2> /dev/null | grep ':true:' | cut -d ':' -f 1 | sed -e 's/^/--disable-issue-type /') $infer_args analyzejson --cfg-json infer-staging/cfg.json --tenv-json infer-staging/tenv.json --changed-files-index ../new_commit/index.txt
