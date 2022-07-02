@@ -69,18 +69,17 @@ parent_path=$( cd "$(dirname "${BASH_SOURCE[0]}")" ; pwd -P )
 cd "$parent_path"
 if [ -d infer-out ]; then rm -Rf infer-out; fi
 if [ -d infer-staging ]; then rm -Rf infer-staging; fi
-coreLibraryPath=../Cilsil/bin/System.Private.CoreLib.dll
-processLibraryPath=../Cilsil/bin/Debug/net5.0/ubuntu.16.10-x64/System.Diagnostics.Process.dll
+coreLibraryPath=/Cilsil/bin/Release/net5.0/linux-x64/System.Private.CoreLib.dll
+processLibraryPath=/Cilsil/bin/Release/net5.0/linux-x64/System.Diagnostics.Process.dll
 echo -e "Copying binaries to a staging folder...\n"
 mkdir infer-staging
 cp -r $coreLibraryPath $processLibraryPath Cilsil.Test/bin infer-staging
 
 # run capture in reactive mode so that previously-captured source files are kept if they are up-to-date
 echo -e "Code translation started..."
-dotnet ../Cilsil/bin/Debug/net5.0/Cilsil.dll translate infer-staging --outcfg infer-staging/cfg.json --outtenv infer-staging/tenv.json --cfgtxt infer-staging/cfg.txt
+dotnet /Cilsil/bin/Debug/net5.0/Cilsil.dll translate infer-staging --outcfg infer-staging/cfg.json --outtenv infer-staging/tenv.json --cfgtxt infer-staging/cfg.txt
 echo -e "Code translation completed. Analyzing...\n"
-infer capture
-time infer $(infer help --list-issue-types 2> /dev/null | grep ':true:' | cut -d ':' -f 1 | sed -e 's/^/--disable-issue-type /') $infer_args analyzejson --cfg-json infer-staging/cfg.json --tenv-json infer-staging/tenv.json
+time /infer/infer/bin/infer $(/infer/infer/bin/infer help --list-issue-types 2> /dev/null | grep ':true:' | cut -d ':' -f 1 | sed -e 's/^/--disable-issue-type /') $infer_args capture --cfg-json infer-staging/cfg.json --tenv-json infer-staging/tenv.json
 
 
 ## second run: new commit
@@ -97,7 +96,6 @@ cp -r $coreLibraryPath $processLibraryPath Cilsil.Test/bin infer-staging
 
 # Run InferSharp analysis.
 echo -e "Code translation started..."
-dotnet ../Cilsil/bin/Debug/net5.0/Cilsil.dll translate infer-staging --outcfg infer-staging/cfg.json --outtenv infer-staging/tenv.json --cfgtxt infer-staging/cfg.txt
+dotnet /Cilsil/bin/Debug/net5.0/Cilsil.dll translate infer-staging --outcfg infer-staging/cfg.json --outtenv infer-staging/tenv.json --cfgtxt infer-staging/cfg.txt
 echo -e "Code translation completed. Analyzing...\n"
-infer capture
-time infer $(infer help --list-issue-types 2> /dev/null | grep ':true:' | cut -d ':' -f 1 | sed -e 's/^/--disable-issue-type /') $infer_args analyzejson --cfg-json infer-staging/cfg.json --tenv-json infer-staging/tenv.json --changed-files-index ../new_commit/index.txt
+time /infer/infer/bin/infer $(/infer/infer/bin/infer help --list-issue-types 2> /dev/null | grep ':true:' | cut -d ':' -f 1 | sed -e 's/^/--disable-issue-type /') $infer_args capture --cfg-json infer-staging/cfg.json --tenv-json infer-staging/tenv.json --incremental-analysis --changed-files-index ../new_commit/index.txt
