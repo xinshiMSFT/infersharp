@@ -81,6 +81,11 @@ dotnet /Cilsil/bin/Debug/net5.0/Cilsil.dll translate infer-staging --outcfg infe
 echo -e "Code translation completed. Analyzing...\n"
 time /infer/infer/bin/infer $(/infer/infer/bin/infer help --list-issue-types 2> /dev/null | grep ':true:' | cut -d ':' -f 1 | sed -e 's/^/--disable-issue-type /') $infer_args capture --cfg-json infer-staging/cfg.json --tenv-json infer-staging/tenv.json
 
+# time /infer/infer/bin/infer analyze -j 1
+
+time /infer/infer/bin/infer analyze --changed-files-index index.txt -j 1
+
+cp infer-out/report.json /new_commit/report-feature.json
 
 ## second run: new commit
 git checkout $2
@@ -98,4 +103,11 @@ cp -r $coreLibraryPath $processLibraryPath Cilsil.Test/bin infer-staging
 echo -e "Code translation started..."
 dotnet /Cilsil/bin/Debug/net5.0/Cilsil.dll translate infer-staging --outcfg infer-staging/cfg.json --outtenv infer-staging/tenv.json --cfgtxt infer-staging/cfg.txt
 echo -e "Code translation completed. Analyzing...\n"
-time /infer/infer/bin/infer $(/infer/infer/bin/infer help --list-issue-types 2> /dev/null | grep ':true:' | cut -d ':' -f 1 | sed -e 's/^/--disable-issue-type /') $infer_args capture --cfg-json infer-staging/cfg.json --tenv-json infer-staging/tenv.json --incremental-analysis --changed-files-index ../new_commit/index.txt
+
+# time /infer/infer/bin/infer $(/infer/infer/bin/infer help --list-issue-types 2> /dev/null | grep ':true:' | cut -d ':' -f 1 | sed -e 's/^/--disable-issue-type /') $infer_args capture --cfg-json infer-staging/cfg.json --tenv-json infer-staging/tenv.json
+# time /infer/infer/bin/infer analyze --changed-files-index ../new_commit/index.txt -j 1
+
+time /infer/infer/bin/infer $(/infer/infer/bin/infer help --list-issue-types 2> /dev/null | grep ':true:' | cut -d ':' -f 1 | sed -e 's/^/--disable-issue-type /') $infer_args capture --reactive --cfg-json infer-staging/cfg.json --tenv-json infer-staging/tenv.json
+time /infer/infer/bin/infer analyze --reactive --changed-files-index ../new_commit/index.txt -j 1
+
+infer reportdiff --report-current report-feature.json --report-previous infer-out/report.json
