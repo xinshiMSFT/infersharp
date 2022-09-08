@@ -185,11 +185,9 @@ namespace Cilsil.Test
         /// <param name="stderr"></param>
         public void RunInfer(string cfgJson, string tenvJson, out string stdout, out string stderr)
         {
-            RunCommand("infer", "capture", out _, out _);
-            Directory.CreateDirectory(Path.Combine(InferOutFolder, "captured"));
             RunCommand(
                 "infer",
-                $"analyzejson --debug --cfg-json {cfgJson} --tenv-json {tenvJson} " +
+                $"run --cfg-json {cfgJson} --tenv-json {tenvJson} " +
                 $"--enable-issue-type CLASS_CAST_EXCEPTION",
                 out stdout,
                 out stderr);
