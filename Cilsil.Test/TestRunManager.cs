@@ -187,7 +187,7 @@ namespace Cilsil.Test
         {
             RunCommand(
                 "infer",
-                $"run --cfg-json {cfgJson} --tenv-json {tenvJson} " +
+                $"run --debug --cfg-json {cfgJson} --tenv-json {tenvJson} " +
                 $"--enable-issue-type CLASS_CAST_EXCEPTION",
                 out stdout,
                 out stderr);
