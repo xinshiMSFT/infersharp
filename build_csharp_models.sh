@@ -27,7 +27,7 @@ System/bin/Debug/net5.0/System.dll \
 section "Analyze model CFGs using Infer#"
 infer capture
 mkdir infer-out/captured
-infer analyzejson --debug \
+infer run --debug \
 --cfg-json models_out/cfg.json \
 --tenv-json models_out/tenv.json
 
